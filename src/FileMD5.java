@@ -196,6 +196,7 @@ public class FileMD5 {
         } catch (Exception e){
         	
         }   
+/*        
 		if (options.has("w")) {
 			Log.info("Has w");
 		}
@@ -222,7 +223,8 @@ public class FileMD5 {
 	    if (options.hasArgument("m")) {
 	    	String val = (String)options.valueOf("m");
 	    	Log.info("has m argument ["+val+"]");
-	    }        
+	    }     
+*/   
 	    return options;
 	}
 
