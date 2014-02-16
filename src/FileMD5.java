@@ -4,6 +4,11 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import com.google.common.hash.HashCode;
 import com.google.common.hash.Hashing;
@@ -14,67 +19,43 @@ import joptsimple.OptionSet;
 
 
 public class FileMD5 {
-
+//	private static Logger Log = Logger.getLogger("me.FileMD5");
+	private static Logger Log = Logger.getLogger(FileMD5.class.getClass().getName());
+	
 	public static void main(String[] args) {
-//	    System.out.println("Doing It");
-	    
-	    if (args.length <= 0) {
-	    	System.out.println("Need argument");
-	    	return;
+		ArrayList<String> alLocation = new ArrayList<String>();;
+		
+        OptionSet options = checkOptions(args);
+        if (options == null) {return;};
+
+	    if (options.has("d") && options.hasArgument("d")) { // get directories in the param
+	      String val = (String)options.valueOf("d");
+	      alLocation = getDirArg(val);	
+	    } else {											// current directory
+	      String val = ".";
+	      alLocation.add(val);
 	    }
-	    
-        OptionSet options = null;
-
-		options = checkOptions(args);
-
-/*		if (options.has("w")) {
-			System.out.println("Has w");
-		}
-    	if (options.has("f") && options.hasArgument("f")) {
-			System.out.println("Has f");
-
-    	}
-*/
 			        
-	    if (args[0].compareTo("-w") == 0) {
-	    	try {
-	    		File outFile = new File("md5.txt");
-	    		BufferedWriter writer = new BufferedWriter(new FileWriter(outFile));
-
-//	    		File dir = new File("c:\\temp");
-	    		File dir = new File(".");
-	    		File[] filesList = dir.listFiles();
-	    		for (File file : filesList) {
-	    			if (file.isFile()) {
-	    				String md5 = filemd5(file.getName());
-	    				System.out.println(file.getName() + "=" + md5);
-	    				writer.write(file.getName()+"="+md5+"\n");
-	    			}
-	    		}
-	    		writer.close();
-	    	} catch (Exception e) {
-	    		e.printStackTrace();
-	    	}
-	    	return;
+	    if (options.has("w")) {
+	    	writeMD5(alLocation);
 	    }
-	    if (args[0].compareTo("-f") == 0) {
-		    String md5 = filemd5(args[1]);
+	    
+	    if (options.has("f") && options.hasArgument("f")) {
+	    	String md5 = (String)options.valueOf("f");
 		    if (md5.length() > 0) {
 		    	System.out.println(args[1] + " = " + md5);
 		    }
 	    }
-	    if (args[0].compareTo("-m") == 0) {
+	    if (options.has("m") && options.hasArgument("m")) {
 	    	Boolean found = false;
+	    	String val = (String)options.valueOf("m");
 	    	try {
 	    		File inFile = new File("md5.txt");
 	    		BufferedReader reader = new BufferedReader(new FileReader(inFile));
 	    		String line;
-				while ((line = reader.readLine()) != null) {
-//					System.out.println(line);
-					
+				while ((line = reader.readLine()) != null) {					
 					String[] token = line.split("=");
-//					System.out.println(token[0] + " ... " + token[1]);
-					if (args[1].compareTo(token[1]) == 0) {
+					if (val.compareTo(token[1]) == 0) {
 						System.out.println(line);
 						found = true;
 					}
@@ -91,6 +72,47 @@ public class FileMD5 {
 	    
 	}
 
+	private static void writeMD5(ArrayList alLocation) {
+	    Iterator<String> it = alLocation.iterator();
+
+    	try {
+	    	  while(it.hasNext()) {
+	    	    String loc = it.next();
+	    	    System.out.println("Writing MD5.txt file for directory [" + loc + "]");
+
+	    	    File outFile = new File(loc+"/md5.txt");
+	    		BufferedWriter writer = new BufferedWriter(new FileWriter(outFile));
+
+	    		File dir = new File(loc);
+	    		File[] filesList = dir.listFiles();
+	    		for (File file : filesList) {
+	    			if (file.getName().equals("md5.txt")) {
+	    				continue;
+	    			}
+	    			if (file.isFile()) {
+	    				String md5 = filemd5(loc+"/"+file.getName());
+	    				System.out.println(file.getName() + "=" + md5);
+	    				writer.write(file.getName()+"="+md5+"\n");
+	    			}
+	    		}
+	    		writer.close();
+	    	  }
+	    	} catch (Exception e) {
+	    		e.printStackTrace();
+	    	}
+	    	return;
+
+	}
+	private static ArrayList<String> getDirArg(String val) {
+		ArrayList<String> al = new ArrayList<String>();
+		String[] loc = val.split(";");
+		for (int i=0; i < loc.length; i++) {
+			al.add(loc[i]);
+			Log.info("Adding directory ["+loc[i]+"]");
+		}
+		return al;
+	}
+	
 	private static String filemd5 (String fn) {
 		String md5Hex = "";
 		File file = null;
@@ -101,12 +123,7 @@ public class FileMD5 {
 
 		  byte[] md5Bytes = md5.asBytes();
 		  md5Hex = md5.toString();
-		  
-//		  System.out.println(md5Hex);
-		  
-//		  long l = file.length();
-//		  System.out.println("File Size: " + l);
-		  
+		  		  
 		} catch (IOException e) {
 			System.out.println("Cant find file.");
 		}
@@ -118,18 +135,57 @@ public class FileMD5 {
 		return md5Hex;
 	}
 	private static OptionSet checkOptions(String[] args) {
-        OptionParser parser = new OptionParser( "f:m:w" );
+//		System.out.println("Args: " + Arrays.deepToString(args));
+		
+	    if (args.length <= 0) {
+	    	System.out.println("Need argument");
+	    	return null;
+	    }
+	    
+        OptionParser parser = new OptionParser( "wd:f:m:d:z:" );
         OptionSet options = null;
+        Log.info("Logging an INFO-level message");
+        
         try {
         	options = parser.parse(args);
         } catch (Exception e){
         	
         }   
-        return options;
+		if (options.has("w")) {
+			Log.info("Has w");
+		}
+		
+	    if (options.has("f")) {
+	    	Log.info("has f");
+	    }
+	    if (options.hasArgument("f")) {
+	    	String val = (String)options.valueOf("f");
+	    	Log.info("has f argument ["+val+"]");
+	    }
+	    
+	    if (options.has("d")) {
+	    	Log.info("has d");
+	    }
+	    if (options.hasArgument("d")) {
+	    	String val = (String)options.valueOf("d");
+	    	Log.info("has d argument ["+val+"]");
+	    }
+
+	    if (options.has("m")) {
+	    	Log.info("has m");
+	    }
+	    if (options.hasArgument("m")) {
+	    	String val = (String)options.valueOf("m");
+	    	Log.info("has m argument ["+val+"]");
+	    }        
+	    return options;
 	}
 
 }
 
 // fileMD5 -m filename			-> Get md5 of filename
 // fileMD5 -w 					-> Write md5.txt
-// fileMD5 -f md5				-> Get filename of md5, if any
+// fileMD5 -w -d "a;b;c"		-> Write md5.txt in directory a, b and c
+// fileMD5 -f md5				-> Search in MD5.txt for a filename with given md5
+// fileMD5 -f md5 -d "a;b;c"	-> Search in MD5.txt for a filename with given md5 in dir a, b and c
+
