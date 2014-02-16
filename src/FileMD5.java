@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.apache.commons.io.FilenameUtils;
 
 import com.google.common.hash.HashCode;
 import com.google.common.hash.Hashing;
@@ -21,6 +22,8 @@ import joptsimple.OptionSet;
 public class FileMD5 {
 //	private static Logger Log = Logger.getLogger("me.FileMD5");
 	private static Logger Log = Logger.getLogger(FileMD5.class.getClass().getName());
+	static final String MD5_FILENAME = "md5.txt";
+	static final String SLASH = System.getProperty("file.separator");
 	
 	public static void main(String[] args) {
 		ArrayList<String> alLocation = new ArrayList<String>();;
@@ -43,55 +46,100 @@ public class FileMD5 {
 	    if (options.has("f") && options.hasArgument("f")) {
 	    	String md5 = (String)options.valueOf("f");
 		    if (md5.length() > 0) {
-		    	System.out.println(args[1] + " = " + md5);
+		    	findFilewithMD5(md5, alLocation);
+//		    	System.out.println(args[1] + " = " + md5);
 		    }
 	    }
 	    if (options.has("m") && options.hasArgument("m")) {
-	    	Boolean found = false;
 	    	String val = (String)options.valueOf("m");
-	    	try {
-	    		File inFile = new File("md5.txt");
-	    		BufferedReader reader = new BufferedReader(new FileReader(inFile));
-	    		String line;
+	    	getMD5ofFile(val,options.has("l"));
+	    	
+	    }
+	}
+	
+	private static void getMD5ofFile(String fn, Boolean live) {
+		Boolean found = false;
+        String filename = FilenameUtils.getName(fn);	// filename + extension
+        String fullPath = FilenameUtils.getFullPath(fn); // Has trailing slash
+                
+		try {
+			if (live) {
+				String md5 = filemd5(fn);
+				if (md5.length() > 0) {
+					System.out.println(fn + " = " + md5);
+				}
+			} else {
+				File inFile = new File(fullPath + MD5_FILENAME);
+				BufferedReader reader = new BufferedReader(new FileReader(inFile));
+				String line;
 				while ((line = reader.readLine()) != null) {					
 					String[] token = line.split("=");
-					if (val.compareTo(token[1]) == 0) {
+					if (fn.compareTo(token[1]) == 0) {
 						System.out.println(line);
 						found = true;
 					}
 				}
 				reader.close();
-				if (found == false) {
-					System.out.println("MD5 signature not found in md5.txt");
-				}
-	    	} catch (Exception e) {
-	    		e.printStackTrace();
-	    	}
-	    }
 
-	    
+				if (found == false) {
+					System.out.println("MD5 signature not found in " + MD5_FILENAME);
+				}
+			}
+		} catch(IOException ioError) {
+	      System.out.println("Cant find " + fullPath + MD5_FILENAME); 
+	    } catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
+
+	private static void findFilewithMD5(String md5, ArrayList alLocation) {
+		Iterator<String> it = alLocation.iterator();
+
+    	try {
+    		while(it.hasNext()) {
+    			Boolean found = false;
+	    	    String loc = it.next();
+    			File inFile = new File(loc+SLASH+ MD5_FILENAME);
+    			BufferedReader reader = new BufferedReader(new FileReader(inFile));
+    			String line;
+    			while ((line = reader.readLine()) != null) {					
+    				String[] token = line.split("=");
+    				if (md5.compareTo(token[1]) == 0) {
+    					System.out.println(loc + SLASH + line);
+    					String liveMD5 = filemd5(loc + SLASH + token[0]);
+    					found = true;
+    				}
+    			}
+    			reader.close();
+    			if (found == false) {
+    				System.out.println("MD5 signature not found in " + loc + SLASH + MD5_FILENAME);
+    			}
+    		}
+    	} catch (Exception e) {
+    		e.printStackTrace();
+    	}
+		
+	}
 	private static void writeMD5(ArrayList alLocation) {
-	    Iterator<String> it = alLocation.iterator();
+	    Iterator<String> it = alLocation.iterator();  	  
 
     	try {
 	    	  while(it.hasNext()) {
 	    	    String loc = it.next();
-	    	    System.out.println("Writing MD5.txt file for directory [" + loc + "]");
+	    	    System.out.println("Writing " + loc + SLASH + MD5_FILENAME);
 
-	    	    File outFile = new File(loc+"/md5.txt");
+	    	    File outFile = new File(loc+SLASH + MD5_FILENAME);
 	    		BufferedWriter writer = new BufferedWriter(new FileWriter(outFile));
 
 	    		File dir = new File(loc);
 	    		File[] filesList = dir.listFiles();
 	    		for (File file : filesList) {
-	    			if (file.getName().equals("md5.txt")) {
+	    			if (file.getName().equals(MD5_FILENAME)) {
 	    				continue;
 	    			}
 	    			if (file.isFile()) {
-	    				String md5 = filemd5(loc+"/"+file.getName());
-	    				System.out.println(file.getName() + "=" + md5);
+	    				String md5 = filemd5(loc+SLASH+file.getName());
 	    				writer.write(file.getName()+"="+md5+"\n");
 	    			}
 	    		}
@@ -131,7 +179,6 @@ public class FileMD5 {
 			
 		}
 
-		
 		return md5Hex;
 	}
 	private static OptionSet checkOptions(String[] args) {
@@ -142,7 +189,7 @@ public class FileMD5 {
 	    	return null;
 	    }
 	    
-        OptionParser parser = new OptionParser( "wd:f:m:d:z:" );
+        OptionParser parser = new OptionParser( "wld:f:m:d:z:" );
         OptionSet options = null;
         Log.info("Logging an INFO-level message");
         
@@ -183,7 +230,8 @@ public class FileMD5 {
 
 }
 
-// fileMD5 -m filename			-> Get md5 of filename
+// fileMD5 -m filename			-> Get md5 of filename from MD5.txt
+// fileMD5 -m filename -l		-> Get md5 of filename from live system file
 // fileMD5 -w 					-> Write md5.txt
 // fileMD5 -w -d "a;b;c"		-> Write md5.txt in directory a, b and c
 // fileMD5 -f md5				-> Search in MD5.txt for a filename with given md5
