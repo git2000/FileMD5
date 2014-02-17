@@ -5,8 +5,12 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.logging.Logger;
+
 import org.apache.commons.io.FilenameUtils;
 
 import com.google.common.hash.HashCode;
@@ -18,8 +22,7 @@ import joptsimple.OptionSet;
 
 
 public class FileMD5 {
-//	private static Logger Log = Logger.getLogger("me.FileMD5");
-	private static Logger Log = Logger.getLogger(FileMD5.class.getClass().getName());
+//	private static Logger Log = Logger.getLogger(FileMD5.class.getClass().getName());
 	static final String MD5_FILENAME = "md5.txt";
 	static final String SLASH = System.getProperty("file.separator");
 	
@@ -45,14 +48,59 @@ public class FileMD5 {
 	    	String md5 = (String)options.valueOf("f");
 		    if (md5.length() > 0) {
 		    	findFilewithMD5(md5, alLocation);
-//		    	System.out.println(args[1] + " = " + md5);
 		    }
 	    }
 	    if (options.has("m") && options.hasArgument("m")) {
 	    	String val = (String)options.valueOf("m");
-	    	getMD5ofFile(val,options.has("l"));
-	    	
+	    	getMD5ofFile(val,options.has("l"));	    	
 	    }
+	    if (options.has("p")) {
+	    	findDuplicate(alLocation);
+	    }
+	}
+	
+	private static void findDuplicate(ArrayList alLocation) {
+		Iterator<String> it = alLocation.iterator();
+		HashMap<String,String> hmMD5Fn = new HashMap<String,String>();
+
+    	try {
+    		while(it.hasNext()) {
+    			Boolean found = false;
+	    	    String loc = it.next();
+
+	    	    System.out.println("Opening " + loc + SLASH + MD5_FILENAME);
+	    	    File inFile = new File(loc +SLASH + MD5_FILENAME);
+				BufferedReader reader = new BufferedReader(new FileReader(inFile));
+				String line;
+				Map.Entry entry;
+				while ((line = reader.readLine()) != null) {					
+					String[] token = line.split("=");
+					String val = hmMD5Fn.get(token[1]);
+					if ((val != null) && (val.length() > 0)) {
+						val = val + ";" + loc + SLASH + token[0]; 
+					} else {
+						val = loc + SLASH + token[0];
+					}
+					hmMD5Fn.put(token[1], val);
+				}
+				reader.close();
+    		} // while
+    		
+    		for (Map.Entry entry: hmMD5Fn.entrySet()) {
+    			System.out.println(entry.getKey() + " " + entry.getValue());
+    		}
+//    	    Iterator itx = hmMD5Fn.entrySet().iterator();
+//    	    while (itx.hasNext()) {
+//    	        Map.Entry<String,String> pairs = (Map.Entry<String.String>)it.next();
+//    	        System.out.println(pairs.getKey() + " = " + pairs.getValue());
+//    	        it.remove(); // avoids a ConcurrentModificationException	
+ //   	    }
+    		
+    		
+    	} catch (Exception e) {
+    		e.printStackTrace();
+    	}
+
 	}
 	
 	private static void getMD5ofFile(String fn, Boolean live) {
@@ -154,7 +202,7 @@ public class FileMD5 {
 		String[] loc = val.split(";");
 		for (int i=0; i < loc.length; i++) {
 			al.add(loc[i]);
-			Log.info("Adding directory ["+loc[i]+"]");
+//			Log.info("Adding directory ["+loc[i]+"]");
 		}
 		return al;
 	}
@@ -187,9 +235,9 @@ public class FileMD5 {
 	    	return null;
 	    }
 	    
-        OptionParser parser = new OptionParser( "wld:f:m:d:z:" );
+        OptionParser parser = new OptionParser( "wlpd:f:m:d:z:" );
         OptionSet options = null;
-        Log.info("Logging an INFO-level message");
+//        Log.info("Logging an INFO-level message");
         
         try {
         	options = parser.parse(args);
@@ -236,4 +284,4 @@ public class FileMD5 {
 // fileMD5 -w -d "a;b;c"		-> Write md5.txt in directory a, b and c
 // fileMD5 -f md5				-> Search in MD5.txt for a filename with given md5
 // fileMD5 -f md5 -d "a;b;c"	-> Search in MD5.txt for a filename with given md5 in dir a, b and c
-
+// fileMD5 -p -d "a;b;c"		-> Find duplicate in dir "a;b;c"
