@@ -7,6 +7,9 @@
   <property name="build" location="build"/>
   <property name="dist"  location="dist"/>
   <property name="lib" location="lib"/>
+  <property name="todir" location="/PeterClass"/>
+	
+
     <path id="classpath">
         <fileset dir="${lib}" includes="**/*.jar"/>
     </path>
@@ -36,8 +39,10 @@
             <attribute name="Main-Class" value="FileMD5"/>
             <attribute name="Class-Path" value=".;${lib}"/>
         </manifest>
-    
+<!--        <fileset dir="${build}" includes="**/*.class" /> -->
+        <zipgroupfileset dir="${lib}" includes="**/*.jar" />
     </jar>
+  	<copy file="${dist}/lib/md5.jar" todir="${todir}"/>
   </target>
 
   <target name="clean"

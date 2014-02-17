@@ -55,11 +55,11 @@ public class FileMD5 {
 	    	getMD5ofFile(val,options.has("l"));	    	
 	    }
 	    if (options.has("p")) {
-	    	findDuplicate(alLocation);
+	    	findDuplicate(alLocation, options.has("o"));
 	    }
 	}
 	
-	private static void findDuplicate(ArrayList alLocation) {
+	private static void findDuplicate(ArrayList alLocation, Boolean showOnlyDup) {
 		Iterator<String> it = alLocation.iterator();
 		HashMap<String,String> hmMD5Fn = new HashMap<String,String>();
 
@@ -72,7 +72,6 @@ public class FileMD5 {
 	    	    File inFile = new File(loc +SLASH + MD5_FILENAME);
 				BufferedReader reader = new BufferedReader(new FileReader(inFile));
 				String line;
-				Map.Entry entry;
 				while ((line = reader.readLine()) != null) {					
 					String[] token = line.split("=");
 					String val = hmMD5Fn.get(token[1]);
@@ -86,15 +85,22 @@ public class FileMD5 {
 				reader.close();
     		} // while
     		
+    		System.out.println(showOnlyDup);
+    		int cnt = 0;
     		for (Map.Entry entry: hmMD5Fn.entrySet()) {
-    			System.out.println(entry.getKey() + " " + entry.getValue());
+    			String val = (String) entry.getValue();
+    			if (showOnlyDup) {
+    				String[] token = val.split(";");
+    				
+//    				System.out.println(val + " " + token.length);
+    				if (token.length > 1) {
+    					cnt++;
+        				System.out.println(cnt+") "+entry.getKey() + " " + val);
+    				}
+    			} else {
+    				System.out.println(cnt+") "+entry.getKey() + " " + val);
+    			}
     		}
-//    	    Iterator itx = hmMD5Fn.entrySet().iterator();
-//    	    while (itx.hasNext()) {
-//    	        Map.Entry<String,String> pairs = (Map.Entry<String.String>)it.next();
-//    	        System.out.println(pairs.getKey() + " = " + pairs.getValue());
-//    	        it.remove(); // avoids a ConcurrentModificationException	
- //   	    }
     		
     		
     	} catch (Exception e) {
@@ -227,61 +233,50 @@ public class FileMD5 {
 
 		return md5Hex;
 	}
-	private static OptionSet checkOptions(String[] args) {
-//		System.out.println("Args: " + Arrays.deepToString(args));
-		
+	private static OptionSet checkOptions(String[] args) {		
 	    if (args.length <= 0) {
 	    	System.out.println("Need argument");
+        	usage();
 	    	return null;
 	    }
 	    
-        OptionParser parser = new OptionParser( "wlpd:f:m:d:z:" );
+        OptionParser parser = new OptionParser( "owlpd:f:m:d:" );
         OptionSet options = null;
-//        Log.info("Logging an INFO-level message");
         
         try {
         	options = parser.parse(args);
         } catch (Exception e){
-        	
+    		System.out.println();
+        	System.out.println("Invalid Option");
+    		System.out.println();
+        	usage();
+    		System.out.println();
         }   
-/*        
-		if (options.has("w")) {
-			Log.info("Has w");
-		}
-		
-	    if (options.has("f")) {
-	    	Log.info("has f");
-	    }
-	    if (options.hasArgument("f")) {
-	    	String val = (String)options.valueOf("f");
-	    	Log.info("has f argument ["+val+"]");
-	    }
-	    
-	    if (options.has("d")) {
-	    	Log.info("has d");
-	    }
-	    if (options.hasArgument("d")) {
-	    	String val = (String)options.valueOf("d");
-	    	Log.info("has d argument ["+val+"]");
-	    }
 
-	    if (options.has("m")) {
-	    	Log.info("has m");
-	    }
-	    if (options.hasArgument("m")) {
-	    	String val = (String)options.valueOf("m");
-	    	Log.info("has m argument ["+val+"]");
-	    }     
-*/   
 	    return options;
+	}
+	private static void usage() {
+		System.out.println("Usage:");
+		System.out.println(" fileMD5 -m [-l]                 -> Get MD5 of filename");
+		System.out.println("                                 -> -l from live filesystem");
+		System.out.println();
+
+		System.out.println(" fileMD5 -w [-d dir;dir;dir]     -> Write MD5 files");
+		System.out.println("                                 -> -d = list of directory");
+		System.out.println();
+		
+		System.out.println(" fileMD5 -f md5 [-d dir;dir;dir] -> Find file with MD5 signature");
+		System.out.println("                                 -> -d = list of directory");
+		System.out.println();
+
+		System.out.println(" fileMD5 -p [-o] [-d dir;dir;dir]-> Find duplicate files");
+		System.out.println("                                 -> -o = Only show duplicates");
+		System.out.println("                                 -> -d = list of directory");
+		System.out.println();
 	}
 
 }
 
-// fileMD5 -m filename			-> Get md5 of filename from MD5.txt
-// fileMD5 -m filename -l		-> Get md5 of filename from live system file
-// fileMD5 -w 					-> Write md5.txt
-// fileMD5 -w -d "a;b;c"		-> Write md5.txt in directory a, b and c
 // fileMD5 -f md5				-> Search in MD5.txt for a filename with given md5
 // fileMD5 -f md5 -d "a;b;c"	-> Search in MD5.txt for a filename with given md5 in dir a, b and c
-// fileMD5 -p -d "a;b;c"		-> Find duplicate in dir "a;b;c"
+// fileMD5 -p -d "a;b;c" -o		-> Find duplicate in dir "a;b;c", show only dups
